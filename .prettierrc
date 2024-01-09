@@ -1,0 +1,22 @@
+{
+	"quotes": "double",
+	"semi": true,
+	"experimentalTernaries": true,
+	"printWidth": 100,
+	"tabWidth": 4,
+	"useTabs": true,
+	"jsxSingleQuote": true,
+	"trailingComma": "all",
+	"bracketSpacing": true,
+	"bracketSameLine": true,
+	"arrowParens": "avoid",
+	"singleAttributePerLine": true,
+	"overrides": [
+		{
+			"files": "*.test.js",
+			"options": {
+				"semi": false
+			}
+		}
+	]
+}

@@ -1,3 +1,4 @@
+import "core-js/stable";
 import express from "express";
 import mongoose from "mongoose";
 import dotenv from "dotenv";
@@ -9,7 +10,13 @@ import hpp from "hpp";
 import morgan from "morgan";
 import cookieParser from "cookie-parser";
 import fs from "fs";
-import path from "path";
+import path, { dirname } from "path";
+import AppError from "./utils/AppError.js";
+
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 const app = express();
 dotenv.config({ path: "./config.env" });
@@ -25,28 +32,31 @@ app.use(
     onSanitize: ({ req, key }) => {
       console.warn(`This request[${key}] is sanitized`, req);
     },
-  })
+  }),
 );
 app.use(hpp());
 
-let accessLogStream = fs.createWriteStream(path.join(__dirname, "access.log"), {
-  flags: "a",
-});
+const accessLogStream = fs.createWriteStream(
+  path.join(__dirname, "access.log"),
+  {
+    flags: "a",
+  },
+);
 app.use(morgan("dev", { stream: accessLogStream }));
 
 app.use(
   express.json({
     limit: "1mb",
-  })
+  }),
 );
 
 const whitelist = ["*"];
 const corsOptions = {
-  origin: function (origin, callback) {
-    if (whitelist.indexOf(origin) !== -1 || !origin) {
+  origin: function (origin: string, callback: (err, allow?: boolean) => void) {
+    if (whitelist.includes(origin) || !origin) {
       callback(null, true);
-    }else{
-        callback(new Error('Not allowed by CORS'))
+    } else {
+      callback(new Error("Not allowed by CORS"));
     }
   },
   optionsSuccessStatus: 200,
@@ -67,23 +77,27 @@ const handleCastError = (error) => {
   return new AppError(`Invalid ${error.path}: ${error.value}`, 400);
 };
 
-const handleDuplicateFieldError = (err, res) => {
+const handleDuplicateFieldError = (err) => {
   const message = `${err.keyValue.email} already exist`;
   return new AppError(message, 400);
 };
 
-const handleValidationError = (err, res) => {
-  const errors = Object.values(err.errors).map((el) => el.message);
+const handleValidationError = (err) => {
+  const errors = Object.values(err.errors).map((el) => {
+    if (el instanceof Error) {
+      el.message;
+    }
+  });
   const message = `Invalid input data. ${errors.join(". ")}`;
   return new AppError(message, 400);
 };
 
-const handleJWTError = (err) => {
+const handleJWTError = () => {
   const message = "Invalid jwt";
   return new AppError(message, 401);
 };
 
-const handleExpirationalError = (err) =>
+const handleExpirationalError = () =>
   new AppError("your jwt token has expired", 404);
 
 app.use((err, req, res, next) => {
@@ -91,17 +105,20 @@ app.use((err, req, res, next) => {
   if (err.name === "CastError") error = handleCastError(error);
   if (err.code === 11000) error = handleDuplicateFieldError(error);
   if (err.name === "ValidationError") error = handleValidationError(error);
-  if (err.name === "JsonWebTokenError") error = handleJWTError(error);
-  if (err.name === "TokenExpiredError") error = handleExpirationalError(error);
+  if (err.name === "JsonWebTokenError") error = handleJWTError();
+  if (err.name === "TokenExpiredError") error = handleExpirationalError();
   res.status(error.statusCode).json({
-      status: error.status,
-      message: error.msg,
+    status: error.status,
+    message: error.msg,
   });
+  next();
 });
 
 mongoose
   .connect(
-    process.env.NODE_ENV === "production" ? process.env.MONGODB_PROD_URL : process.env.MONGODB_DEV_URL
+    process.env.NODE_ENV === "production"
+      ? process.env.MONGODB_PROD_URL!
+      : process.env.MONGODB_DEV_URL!,
   )
   .then((connection) => {
     console.log("connected to db");

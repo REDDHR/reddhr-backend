@@ -1,7 +1,6 @@
-import mongoose from "mongoose";
-import User from './models/user.js';
-import Tag from './models/tag.js';
-import Category from './models/category.js';
+import User from "./models/user.js";
+import Tag from "./models/tag.js";
+import Category from "./models/category.js";
 
 const filterProducts = async (queryString, query) => {
   query = await query.find({
@@ -61,6 +60,7 @@ class ApiFeatures {
     this.query = query;
     this.queryString = queryString;
   }
+
   pagination() {
     const page = this.queryString.page * 1 || 1;
     const limit = this.queryString.limit * 1 || 1000000;
@@ -68,6 +68,7 @@ class ApiFeatures {
     this.query = this.query.skip(skip).limit(limit);
     return this;
   }
+
   sort() {
     if (this.queryString.sort) {
       const sortBy = this.queryString.sort.split(",").join(" ");
@@ -77,6 +78,7 @@ class ApiFeatures {
     }
     return this;
   }
+
   filter() {
     if (this.queryString.filter) {
       this.query = filterProducts(this.queryString, this.query);
@@ -85,4 +87,5 @@ class ApiFeatures {
     return this;
   }
 }
-module.exports = ApiFeatures;
+
+export default ApiFeatures;
